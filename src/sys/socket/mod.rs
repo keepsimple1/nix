@@ -616,7 +616,9 @@ pub enum ControlMessage<'a> {
         target_os = "linux",
     ))]
     AlgSetAeadAssoclen(&'a u32),
-
+    /// Setup UDP GSO size
+    #[cfg(target_os = "linux")]
+    UdpSegmentOffload(&'a u16),
 }
 
 // An opaque structure used to prevent cmsghdr from being a public type
@@ -708,6 +710,10 @@ impl<'a> ControlMessage<'a> {
             ControlMessage::AlgSetAeadAssoclen(len) => {
                 mem::size_of_val(len)
             },
+            #[cfg(target_os = "linux")]
+            ControlMessage::UdpSegmentOffload(gso_sz) => {
+                mem::size_of_val(gso_sz)
+            }
         }
     }
 
@@ -720,6 +726,8 @@ impl<'a> ControlMessage<'a> {
             #[cfg(any(target_os = "android", target_os = "linux"))]
             ControlMessage::AlgSetIv(_) | ControlMessage::AlgSetOp(_) |
                 ControlMessage::AlgSetAeadAssoclen(_) => libc::SOL_ALG ,
+            #[cfg(target_os = "linux")]
+            ControlMessage::UdpSegmentOffload(_) => libc::SOL_UDP,
         }
     }
 
@@ -740,6 +748,10 @@ impl<'a> ControlMessage<'a> {
             #[cfg(any(target_os = "android", target_os = "linux"))]
             ControlMessage::AlgSetAeadAssoclen(_) => {
                 libc::ALG_SET_AEAD_ASSOCLEN
+            },
+            #[cfg(target_os = "linux")]
+            ControlMessage::UdpSegmentOffload(_) => {
+                libc::UDP_SEGMENT
             },
         }
     }
