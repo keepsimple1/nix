@@ -680,7 +680,7 @@ impl<'a> ControlMessage<'a> {
             },
             #[cfg(target_os = "linux")]
             ControlMessage::UdpSegmentOffload(gso_sz) => {
-                gso_sz as *const _ as *const u16
+                gso_sz as *const _ as *const u8
             },
         };
         unsafe {
