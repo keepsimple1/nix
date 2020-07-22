@@ -678,6 +678,10 @@ impl<'a> ControlMessage<'a> {
             ControlMessage::AlgSetAeadAssoclen(len) => {
                 len as *const _ as *const u8
             },
+            #[cfg(target_os = "linux")]
+            ControlMessage::UdpSegmentOffload(gso_sz) => {
+                gso_sz as *const _ as *const u16
+            },
         };
         unsafe {
             ptr::copy_nonoverlapping(
