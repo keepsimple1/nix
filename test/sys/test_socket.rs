@@ -1136,3 +1136,38 @@ pub fn test_vsock() {
     close(s1).unwrap();
     thr.join().unwrap();
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+pub fn test_udp_gso() {
+    use std::os::unix::io::AsRawFd;
+    use nix::sys::socket::{ControlMessage, SockAddr, sendmsg, MsgFlags};
+    use nix::sys::uio::IoVec;
+
+    const MAX_BUF_SIZE: usize = 65536;
+    let server_endpoint = "127.0.0.1:4433";
+    let server_socket = std::net::UdpSocket::bind(&server_endpoint)
+        .expect("failed to bind server socket");
+    let server = std::thread::spawn(move || {
+        let mut buf = [0; MAX_BUF_SIZE];
+        let (sz, src) = server_socket.recv_from(&mut buf).expect("failed to recv_from");
+        println!("received from {} {} bytes", src, sz);
+    });
+    let client_socket = std::net::UdpSocket::bind("127.0.0.1:34254").expect("failed to bind client socket");
+    let buf = ['c' as u8;  1450];
+    let sent_sz = client_socket.send_to(&buf[..], &server_endpoint).expect("failed to send UDP packet");
+    println!("sent out {} bytes", sent_sz);
+
+    let fd = client_socket.as_raw_fd();
+    println!("fd is: {}", fd);
+
+    let iov = IoVec::from_slice(&buf[..]);
+    let gso_size: u16 = 1350;
+    let ctrl_msgs = [ControlMessage::UdpSegmentOffload(&gso_size),];
+    let socket_addr = &server_endpoint.parse().unwrap();
+    let addr = SockAddr::new_inet(InetAddr::from_std(&socket_addr));
+    let sz = sendmsg(fd, &[iov], &ctrl_msgs, MsgFlags::empty(), Some(&addr)).expect("failed to sendmsg");
+    println!("sock-send: {} bytes", sz);
+
+    server.join().expect("Couldn't join the server thread");
+}
