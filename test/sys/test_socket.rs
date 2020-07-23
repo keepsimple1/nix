@@ -1145,6 +1145,8 @@ pub fn test_udp_gso() {
     use nix::sys::uio::IoVec;
 
     const MAX_BUF_SIZE: usize = 65536;
+    const GSO_SIZE: usize = 1350;
+
     let server_endpoint = "127.0.0.1:4433";
     let server_socket = std::net::UdpSocket::bind(&server_endpoint)
         .expect("failed to bind server socket");
@@ -1152,9 +1154,17 @@ pub fn test_udp_gso() {
         let mut buf = [0; MAX_BUF_SIZE];
         let (sz, src) = server_socket.recv_from(&mut buf).expect("failed to recv_from");
         println!("received from {} {} bytes", src, sz);
+
+	loop {
+	    let (sz, src) = server_socket.recv_from(&mut buf).expect("failed to recv_from again");
+	    println!("received from GSO: {} {} bytes", src, sz);
+	    if sz < GSO_SIZE {
+		break;
+	    }
+	}
     });
     let client_socket = std::net::UdpSocket::bind("127.0.0.1:34254").expect("failed to bind client socket");
-    let buf = ['c' as u8;  1450];
+    let buf = ['c' as u8;  GSO_SIZE + 100];
     let sent_sz = client_socket.send_to(&buf[..], &server_endpoint).expect("failed to send UDP packet");
     println!("sent out {} bytes", sent_sz);
 
@@ -1162,7 +1172,7 @@ pub fn test_udp_gso() {
     println!("fd is: {}", fd);
 
     let iov = IoVec::from_slice(&buf[..]);
-    let gso_size: u16 = 1350;
+    let gso_size: u16 = GSO_SIZE as u16;
     let ctrl_msgs = [ControlMessage::UdpSegmentOffload(&gso_size),];
     let socket_addr = &server_endpoint.parse().unwrap();
     let addr = SockAddr::new_inet(InetAddr::from_std(&socket_addr));
