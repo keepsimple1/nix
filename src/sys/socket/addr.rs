@@ -402,7 +402,7 @@ impl fmt::Display for IpAddr {
  *
  */
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Ipv4Addr(pub libc::in_addr);
 
 impl Ipv4Addr {
@@ -439,6 +439,13 @@ impl Ipv4Addr {
 }
 
 impl fmt::Display for Ipv4Addr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let octets = self.octets();
+        write!(fmt, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+    }
+}
+
+impl fmt::Debug for Ipv4Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let octets = self.octets();
         write!(fmt, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
